@@ -6,6 +6,12 @@ wd <- '/Users/sbunga/gitHub/singlecell_model_analysis/'
 input_dirs <- list.dirs(paste0(wd, 'input_files'), full.names = T)
 input_files <- na.omit(str_extract(input_dirs, ".*\\/[ATGC]+"))
 
+# Create outputs
+paths <- c('images')
+for(p in paths){
+  dir.create(paste0(wd, '/output/', p), showWarnings = F, recursive = T)
+}
+
 sample_names_list <- list(
   'CTAGTCGA'='Zymo_1',
   'TCTTACGC'='Zymo_2',
@@ -42,11 +48,15 @@ for (s in 1:length(infiles)) {
   
   object_list[[s]][["percent.mt"]] <- PercentageFeatureSet(object_list[[s]], 
                                                       pattern = "mt-")
-  # Visualize QC metrics as a violin plot
-  print(VlnPlot(object_list[[s]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
-}
+  
+  # Visualize QC metrics as a violin plot and save as PNG
+  dir.create(paste0(wd, 'output/images/', 'QC'), showWarnings = F, recursive = T)
+  png(filename = paste0(wd, 'output/images/', 'QC/', sample_names[s],'_','QC_VlnPlot.png'), res = 150,
+      width = 1500, height = 1000)
+  print(VlnPlot(object_list[[s]], features = c("nFeature_RNA", "nCount_RNA", 
+                                               "percent.mt"), ncol = 3))
+  dev.off()
+  }
 
 # Merge objects
-merged_data <- merge(object_list[[1]], object_list[-1], add.cell.ids = sample_names )
-
-#Reduce(function(x,y) merge(x,y,add.cell.ids = c(x@project.name,y@project.name)) , Seurat.list)
+#merged_data <- merge(object_list[[1]], object_list[-1], add.cell.ids = sample_names )
