@@ -39,6 +39,11 @@ for (s in 1:length(infiles)) {
   # Check for sample type
   type <- if(sample_names[s] %in% HT) 'HT' else 'STIM'
   object_list[[s]]$type <- type
+  
+  object_list[[s]][["percent.mt"]] <- PercentageFeatureSet(object_list[[s]], 
+                                                      pattern = "mt-")
+  # Visualize QC metrics as a violin plot
+  print(VlnPlot(object_list[[s]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
 }
 
 # Merge objects
