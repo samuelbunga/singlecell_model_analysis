@@ -1,5 +1,8 @@
 library(Seurat)
+library(ggplot2)
 library(stringr)
+library(tidyseurat)
+
 
 wd <- '/Users/sbunga/gitHub/singlecell_model_analysis/'
 
@@ -60,6 +63,37 @@ png(filename = paste0(wd, 'output/images/', 'QC/all_samples_QC_VlnPlot.png'),
 feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito")
 VlnPlot(all_data, group.by = "orig.ident", features = feats, pt.size = 0.1, ncol = 3) + 
   NoLegend()
+dev.off()
+
+# Visualize QC as density plots
+# nFeature
+png(filename = paste0(wd, 'output/images/', 'QC/all_samples_nFeature_density.png'), 
+    res = 150, width = 1500, height = 1000)
+
+all_data %>%
+  tidyseurat::ggplot(aes(nFeature_RNA, fill = orig.ident)) +
+  geom_density(alpha=0.4)
+
+dev.off()
+
+# nCount_RNA
+png(filename = paste0(wd, 'output/images/', 'QC/all_samples_nCount_density.png'), 
+    res = 150, width = 1500, height = 1000)
+
+all_data %>%
+  tidyseurat::ggplot(aes(nCount_RNA, fill = orig.ident)) +
+  geom_density(alpha=0.4)
+
+dev.off()
+
+# percent_mito
+png(filename = paste0(wd, 'output/images/', 'QC/all_samples_percent_mito_density.png'), 
+    res = 150, width = 1500, height = 1000)
+
+all_data %>%
+  tidyseurat::ggplot(aes(percent_mito, fill = orig.ident)) +
+  geom_density(alpha=0.4)
+
 dev.off()
 
 
