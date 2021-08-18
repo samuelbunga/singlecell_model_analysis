@@ -36,7 +36,7 @@ infiles <- lapply(input_files, Read10X)
 
 # Get sample names in order from input paths
 barcodes <- basename(input_files)
-sample_names <- unname(unlist(sample_names[barcodes]))
+sample_names <- unname(unlist(sample_names_list[barcodes]))
 
 # Create Seurat Objects and add meta data
 object_list <- list()
@@ -45,18 +45,21 @@ for (s in 1:length(infiles)) {
   # Check for sample type
   type <- if(sample_names[s] %in% HT) 'HT' else 'STIM'
   object_list[[s]]$type <- type
-  
-  object_list[[s]][["percent.mt"]] <- PercentageFeatureSet(object_list[[s]], 
-                                                      pattern = "mt-")
-  
-  # Visualize QC metrics as a violin plot and save as PNG
-  dir.create(paste0(wd, 'output/images/', 'QC'), showWarnings = F, recursive = T)
-  png(filename = paste0(wd, 'output/images/', 'QC/', sample_names[s],'_','QC_VlnPlot.png'), res = 150,
-      width = 1500, height = 1000)
-  print(VlnPlot(object_list[[s]], features = c("nFeature_RNA", "nCount_RNA", 
-                                               "percent.mt"), ncol = 3))
-  dev.off()
   }
 
 # Merge objects
-#merged_data <- merge(object_list[[1]], object_list[-1], add.cell.ids = sample_names )
+all_data <- merge(object_list[[1]], object_list[-1], add.cell.ids = sample_names )
+
+# Get Mito percentage
+all_data <- PercentageFeatureSet(all_data, "^mt-", col.name = "percent_mito")
+
+# Visualize QC metrics as a violin plot and save as PNG
+dir.create(paste0(wd, 'output/images/', 'QC'), showWarnings = F, recursive = T)
+png(filename = paste0(wd, 'output/images/', 'QC/all_samples_QC_VlnPlot.png'), 
+    res = 150, width = 1500, height = 1000)
+feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito")
+VlnPlot(all_data, group.by = "orig.ident", features = feats, pt.size = 0.1, ncol = 3) + 
+  NoLegend()
+dev.off()
+
+
