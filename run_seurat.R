@@ -51,6 +51,7 @@ for(p in paths){
   dir.create(paste0(wd, '/output/', p), showWarnings = F, recursive = T)
 }
 dir.create(paste0(wd, 'output/images/', 'QC'), showWarnings = F, recursive = T)
+dir.create(paste0(wd, 'RDS'), showWarnings = F)
 
 sample_names_list <- list(
   'CTAGTCGA'='Zymo_1',
@@ -107,8 +108,11 @@ png(paste0(wd, '/output/images/Feature_plots/incision.png'),
 VlnPlot(incision, features = c("Thbs1","Csf1r","Ptgs2","Il1b"))
 dev.off()
 
-incision <- subset(incision, subset = nFeature_RNA > 200 & 
-                     nFeature_RNA < 2500 & percent.mt < 5)
+saveRDS(incision, paste0(wd, '/RDS/incision.Rds'))
+
+incision <- subset(incision, subset = nFeature_RNA > 300 & 
+                     nFeature_RNA < 2500 & nCount_RNA > 500 & percent_mito < 5)
+
 
 # Merge UVB
 uvb_samples <- c(8, 6, 5, 7)
@@ -128,8 +132,10 @@ png(paste0(wd, '/output/images/Feature_plots/uvb.png'),
 VlnPlot(uvb, features = c("Thbs1","Csf1r","Ptgs2","Il1b"))
 dev.off()
 
-uvb <- subset(uvb, subset = nFeature_RNA > 200 &
-                nFeature_RNA < 2500 & percent.mt < 5)
+saveRDS(uvb, paste0(wd, '/RDS/uvb.Rds'))
+
+uvb <- subset(uvb, subset = nFeature_RNA > 250 &
+                nFeature_RNA < 2200 & nCount_RNA > 300 & percent_mito < 5)
 
 # Merge Zymo
 zymo_sample <- c(9, 10, 11, 12)
@@ -149,8 +155,9 @@ png(paste0(wd, '/output/images/Feature_plots/zymo.png'),
 VlnPlot(zymo, features = c("Thbs1","Csf1r","Ptgs2","Il1b"))
 dev.off()
 
-zymo <- subset(zymo, subset = nFeature_RNA > 200 & 
-                     nFeature_RNA < 2500 & percent.mt < 5)
+saveRDS(zymo, paste0(wd, '/RDS/zymo.Rds'))
+zymo <- subset(zymo, subset = nFeature_RNA > 300 & 
+                     nFeature_RNA < 2200 & nCount_RNA > 500 & percent_mito < 5)
 # Merge objects
 #all_data <- merge(object_list[[1]], object_list[-1], 
 #                  add.cell.ids = sample_names )
