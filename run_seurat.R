@@ -44,6 +44,15 @@ sample_names_list <- list(
 HT <- c('Healthy_1', 'Healthy_2', 'Saline_1', 'Saline_2', 'Sham_1', 'Sham_2')
 STIM <- c('Zymo_1', 'Zymo_2', 'Incision_1', 'Incision_2', 'UVB_1', 'UVB_2')
 
+models <- list(
+  'Incision'='Incision',
+  'Healthy'='Incision',
+  'Zymo'='Zymo',
+  'Saline'='Zymo',
+  'UVB'='UVB',
+  'Sham'='UVB'
+)
+
 # Read samples
 infiles <- lapply(input_files, Read10X)
 
@@ -60,6 +69,8 @@ for (s in 1:length(infiles)) {
   object_list[[s]]$type <- type
   # add replicate in the metadata
   object_list[[s]]$replicate <- str_split(sample_names[s], '_', simplify = F)[[1]][2]
+  # add sample model
+  object_list[[s]]$model <- models[str_split(sample_names[s], '_', simplify = F)[[1]][1]]
   }
 
 # Merge Incision
