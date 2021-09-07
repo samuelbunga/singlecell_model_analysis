@@ -59,7 +59,7 @@ for (s in 1:length(infiles)) {
   type <- if(sample_names[s] %in% HT) 'HT' else 'STIM'
   object_list[[s]]$type <- type
   # add replicate in the metadata
-  object_list[[s]]$replicate <- str_split(sample_names[1], '_', simplify = F)[[1]][2]
+  object_list[[s]]$replicate <- str_split(sample_names[s], '_', simplify = F)[[1]][2]
   }
 
 # Merge Incision
@@ -148,6 +148,11 @@ all_data <- merge(incision, c(uvb, zymo), add.cell.ids = c("incision", "uvb
                                                            ", "zymo"))
 
 saveRDS(all_data, paste0(wd, '/RDS/merged_object.Rds'))
+
+healthy_merged <- subset(all_data, type == 'HT')
+saveRDS(healthy_merged, paste0(wd, '/RDS/healthy_merged.Rds'))
+stim_merged <- subset(all_data, type == 'STIM')
+saveRDS(stim_merged, paste0(wd, '/RDS/stim_merged.Rds'))
 
 # SCTransform
 split_seurat <- SplitObject(all_data, split.by = "orig.ident")
