@@ -1,3 +1,24 @@
+#load libraries
+# Load libraries
+library(scater)
+library(Seurat)
+library(tidyverse)
+library(cowplot)
+library(Matrix.utils)
+library(edgeR)
+library(dplyr)
+library(magrittr)
+library(Matrix)
+library(purrr)
+library(reshape2)
+library(S4Vectors)
+library(tibble)
+library(SingleCellExperiment)
+library(pheatmap)
+library(apeglm)
+library(png)
+library(DESeq2)
+library(RColorBrewer)
 ## Functions script
 
 plot_density <- function(wd, all_data, fname, feature, intercept){
