@@ -1,13 +1,17 @@
+library(dplyr)
 library(Seurat)
 library(ggplot2)
 library(stringr)
+library(dittoSeq)
 library(tidyseurat)
+library(ComplexHeatmap)
 
 ## Notes
 # plot barplots of no. of cells of all samples before and after filtering
 
 # Visualize QC as density plots
 # nFeature
+# trial -> compare cluster 2 (Zymo, UVB, Incision)
 
 wd <- '/Users/sbunga/gitHub/singlecell_model_analysis/'
 source(paste0(wd, '/functions.R'))
@@ -53,7 +57,24 @@ models <- list(
   'Sham'='UVB'
 )
 
+condition <- list(
+  'Incision_1' = 'Incision',
+  'Incision_2' = 'Incision',
+  'Healthy_1' = 'Healthy',
+  'Healthy_2' = 'Healthy',
+  'Zymo_1' = 'Zymo',
+  'Zymo_2' = 'Zymo',
+  'Saline_1' = 'Saline',
+  'Saline_2' = 'Saline',
+  'UVB_1' = 'UVB',
+  'UVB_2' = 'UVB',
+  'Sham_1' = 'Sham',
+  'Sham_2' = 'Sham'
+)
+
 # Read samples
+input_files <- na.omit(input_files[basename(input_files) %in% 
+                                     names(sample_names_list)])
 infiles <- lapply(input_files, Read10X)
 
 # Get sample names in order from input paths
@@ -62,7 +83,7 @@ sample_names <- unname(unlist(sample_names_list[barcodes]))
 
 # Create Seurat Objects and add meta data
 object_list <- list()
-for (s in 1:length(infiles)) {
+for (s in 1:length(sample_names)) {
   object_list[[s]] <- CreateSeuratObject(infiles[[s]], project = sample_names[s])
   # Check for sample type
   type <- if(sample_names[s] %in% HT) 'HT' else 'STIM'
@@ -71,6 +92,7 @@ for (s in 1:length(infiles)) {
   object_list[[s]]$replicate <- str_split(sample_names[s], '_', simplify = F)[[1]][2]
   # add sample model
   object_list[[s]]$model <- models[str_split(sample_names[s], '_', simplify = F)[[1]][1]]
+  object_list[[s]]$condition <- condition[sample_names[s]][[1]]
   }
 
 # Merge Incision
@@ -101,7 +123,8 @@ plot_ncells(wd, 'incision_after_filter', incision)
 
 
 # Merge UVB
-uvb_samples <- c(8, 6, 5, 7)
+#uvb_samples <- c(5, 7, 6)
+uvb_samples <- c(5, 7, 8, 6)
 uvb <- object_list[uvb_samples]
 uvb <- merge(uvb[[1]], uvb[-1],
              all.cell.ids = sample_names[uvb_samples])
@@ -126,7 +149,8 @@ uvb <- subset(uvb, subset = nFeature_RNA > 250 &
 plot_ncells(wd, 'uvb_after_filter', uvb)
 
 # Merge Zymo
-zymo_sample <- c(9, 10, 11, 12)
+#zymo_sample <- c(9, 8, 10, 11)
+zymo_sample <- c(10, 9 , 11, 12)
 zymo <- object_list[zymo_sample]
 zymo <- merge(zymo[[1]], zymo[-1],
               all.cell.ids = sample_names[zymo_sample])
@@ -155,8 +179,8 @@ plot_ncells(wd, 'zymo_after_filter', zymo)
 
 
 # Merge all the samples
-all_data <- merge(incision, c(uvb, zymo), add.cell.ids = c("incision", "uvb
-                                                           ", "zymo"))
+all_data <- merge(incision, c(uvb, zymo), add.cell.ids = c("incision", "uvb",
+                                                           "zymo"))
 
 saveRDS(all_data, paste0(wd, '/RDS/merged_object.Rds'))
 
@@ -166,7 +190,7 @@ stim_merged <- subset(all_data, type == 'STIM')
 saveRDS(stim_merged, paste0(wd, '/RDS/stim_merged.Rds'))
 
 # SCTransform
-split_seurat <- SplitObject(all_data, split.by = "orig.ident")
+split_seurat <- SplitObject(all_data, split.by = "condition")
 
 for (i in 1:length(split_seurat)) {
   split_seurat[[i]] <- SCTransform(split_seurat[[i]], vars.to.regress = c("percent_mito"))
@@ -186,11 +210,13 @@ integ_anchors <- FindIntegrationAnchors(object.list = split_seurat,
 saveRDS(integ_anchors, 
         paste0(wd, '/output/integrated_anchors.Rds'))
 
-seurat_integrated <- readRDS(paste0(wd, './output/seurat_integrated.Rds'))
+
 
 # Integrate across conditions
 #seurat_integrated <- IntegrateData(anchorset = integ_anchors, 
 #                                   normalization.method = "SCT")
+seurat_integrated <- readRDS(paste0(wd, 
+                                    './RDS/seurat_integrated_all_samples.Rds'))
 
 # Run PCA
 seurat_integrated <- RunPCA(object = seurat_integrated)
@@ -204,11 +230,6 @@ seurat_integrated <- RunUMAP(seurat_integrated,
                              dims = 1:40,
                              reduction = "pca")
 
-
-# Run UMAP
-seurat_integrated <- RunUMAP(seurat_integrated, 
-                             dims = 1:40,
-                             reduction = "pca")
 
 # Explore heatmap of PCs
 DimHeatmap(seurat_integrated, 
@@ -226,7 +247,10 @@ seurat_integrated <- FindNeighbors(object = seurat_integrated,
 
 # Determine the clusters for various resolutions                                
 seurat_integrated <- FindClusters(object = seurat_integrated,
-                                  resolution = c(0.4, 0.6, 0.8, 1.0, 1.4))
+                                  resolution = 0.6)
+saveRDS(seurat_integrated, paste0(wd, '/RDS/seurat_integrated_clustered.Rds'))
+
+seurat_integrated <- readRDS(paste0(wd,'/RDS/seurat_integrated_clustered.Rds'))
 
 # Explore resolutions
 seurat_integrated@meta.data %>% 
@@ -235,9 +259,151 @@ seurat_integrated@meta.data %>%
 # Assign identity of clusters
 Idents(object = seurat_integrated) <- "integrated_snn_res.0.6"
 
+# Find all the DE genes from all clusters
+seurat_integrated.markers <- FindAllMarkers(seurat_integrated, 
+                                            only.pos = TRUE,
+                                            min.pct = 0.25, 
+                                            logfc.threshold = 0.25)
+#saveRDS(seurat_integrated.markers, paste0(wd, '/RDS/seurat_integrated_markers.Rds'))
+
+seurat_integrated.markers <- readRDS(paste0(wd,'/RDS/seurat_integrated_markers.Rds'))
+
+
+# Annotating clusters
+clusters.ids <- c("Neutrophils", "DC2", "Macs4", "Dermal Macs", "Macs3",
+                  "T cells", "RM","Macs1", "Mast cells", "DC1", "LCs", "Macs2",
+                  "Keratinocytes")
+names(clusters.ids) <- levels(seurat_integrated)[c(1:length(clusters.ids))]
+seurat_integrated <- RenameIdents(seurat_integrated, clusters.ids)
+
+#cluster_cells <- list(
+#  'Neutrophil' = WhichCells(seurat_integrated, idents = c("Neutrophils")),
+#  'RM1' = WhichCells(seurat_integrated, idents = c("RM1")),
+#  'RM2' = WhichCells(seurat_integrated, idents = c("RM2")),
+#  'Dermal Macs' = WhichCells(seurat_integrated, idents = c("Dermal Macs"))
+#)
+
+seurat_integrated$cell_type <- Idents(seurat_integrated)
+
+gene_list <- c("S100a9", "Csf3r", "Mgl2", "H2-Ab1", "Cd74", "Chil3", "Fn1", 
+               "Fcgr1", "Lyz2", "F13a1", "Selenop", "Cd163", "Mrc1", "Csf1r", 
+               "Il2rb", "Thy1", "Ptgs2", "Tnf", "Il1b", "Cxcl1", "Thbs1", "Fcer1a")
+
+seurat_integrated.markers %>%
+  group_by(cluster) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+
+
+# Highlight certain genes
+png(paste0(wd, '/output/images/heatmap/highlighted_features.png'), width = 1250,
+    height=1500, res=100)
+print(dittoHeatmap(seurat_integrated, top10$gene, annot.by = c("cell_type"),
+             highlight.features = gene_list,
+             complex = TRUE, assay = 'integrated', slot='data',scaled.to.max=T)
+)
+dev.off()
+
+DoHeatmap(object = seurat_integrated, features = top10$gene)
+dev.off()
+# subset HT
+#seurat_HT <- subset(seurat_integrated, type=='HT')
+
+# subet Stim
+#seurat_stim <- subset(seurat_integrated, type=='STIM')
+
+
+
 # Plot the UMAP
 dir.create(paste0(wd, '/output/images/UMAP'), showWarnings = F)
-png(paste0(wd, '/output/images/UMAP/sample_type.png'), width = 6500,
+
+
+
+# Final images
+# ------ X ------
+
+
+# Heatmaps
+dir.create(paste0(wd, '/output/images/heatmap/'), showWarnings = F)
+png(paste0(wd, '/output/images/heatmap/top_20_subset_clusters.png'), width = 3500,
+    height = 4200, res=400)
+cluster_subset.markers %>%
+  group_by(cluster) %>%
+  top_n(n = 20, wt = avg_log2FC) -> top20
+print(DoHeatmap(cluster_subset, features = top20$gene) + NoLegend())
+dev.off()
+
+png(paste0(wd, '/output/images/heatmap/top_10_all_clusters.png'), width = 3500,
+    height = 7200, res=400)
+seurat_integrated.markers %>%
+  group_by(cluster) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+print(DoHeatmap(seurat_integrated, features = top10$gene) + NoLegend())
+dev.off()
+
+png(paste0(wd, '/output/images/UMAP/umap_HT_model.png'), width = 3500,
+    height = 2500, res=400)
+print(DimPlot(seurat_HT,
+              reduction = "umap",
+              label = F,
+              label.size = 4, split.by = 'model'))
+dev.off()
+
+
+png(paste0(wd, '/output/images/UMAP/umap_sub_cluster_no_label.png'), width = 3500,
+    height = 2500, res=400)
+print(DimPlot(cluster_subset,
+              reduction = "umap",
+              label = F,
+              label.size = 4))
+dev.off()
+
+
+
+png(paste0(wd, '/output/images/UMAP/umap_sub_cluster_type_condition.png'), width = 3500,
+    height = 2500, res=400)
+print(DimPlot(seurat_integrated,
+              reduction = "umap",
+              label = F,
+              label.size = 4, split.by = 'condition',
+              group.by = 'model', cells.highlight = cluster_cells,
+              cols.highlight = c('blue', 'green', 'red', 'yellow')))
+dev.off()
+
+png(paste0(wd, '/output/images/UMAP/umap_sub_cluster_condition_type.png'), width = 3500,
+    height = 2500, res=400)
+print(DimPlot(cluster_subset,
+              reduction = "umap",
+              label = F,
+              label.size = 4, split.by = 'condition',
+              group.by = 'type'))
+dev.off()
+
+png(paste0(wd, '/output/images/UMAP/umap_all_samples_no_label.png'), width = 3500,
+    height = 2500, res=400)
+print(DimPlot(seurat_integrated,
+              reduction = "umap",
+              label = F,
+              label.size = 4))
+dev.off()
+
+png(paste0(wd, '/output/images/UMAP/umap_all_samples_model_condition.png'), width = 3500,
+    height = 2500, res=400)
+print(DimPlot(seurat_integrated,
+              reduction = "umap",
+              label = F,
+              label.size = 4, split.by = 'model', group.by = 'condition'))
+dev.off()
+
+png(paste0(wd, '/output/images/UMAP/umap_all_samples_model.png'), width = 3500,
+    height = 2500, res=400)
+print(DimPlot(seurat_integrated,
+              reduction = "umap",
+              label = F,
+              label.size = 4, split.by = 'model'))
+dev.off()
+
+
+png(paste0(wd, '/output/images/UMAP/sample_orig_ident_all_samples.png'), width = 6500,
     height = 2500, res=400)
 print(DimPlot(seurat_integrated,
         reduction = "umap",
@@ -245,4 +411,73 @@ print(DimPlot(seurat_integrated,
         label.size = 4,#group.by = 'type', 
         split.by = 'orig.ident'))
 dev.off()
+
+
+# ----- X -----
+png(paste0(wd, '/output/images/UMAP/sample_model_all_samples.png'), width = 6500,
+    height = 2500, res=400)
+print(DimPlot(seurat_integrated,
+              reduction = "umap",
+              label = TRUE,
+              label.size = 4,#group.by = 'type', 
+              split.by = 'model'))
+dev.off()
+
+png(paste0(wd, '/output/images/UMAP/sample_type_all_samples.png'), width = 6500,
+    height = 2500, res=400)
+print(DimPlot(seurat_integrated,
+              reduction = "umap",
+              #label = TRUE,
+              label.size = 4, group.by = 'type', 
+              split.by = 'model'))
+dev.off()
+
+
+png(paste0(wd, '/output/images/UMAP/sample_condition_all_samples.png'), width = 6500,
+    height = 2500, res=400)
+print(DimPlot(seurat_integrated,
+              reduction = "umap",
+              label = TRUE,
+              label.size = 4,
+              #group.by = 'type', 
+              split.by = 'condition'))
+dev.off()
+
+# No. of cells in each condition
+table(seurat_integrated@meta.data$condition)
+
+# No. of cells in each cluster
+table(seurat_integrated$integrated_snn_res.0.6)
+
+# Select the RNA counts slot to be the default assay
+DefaultAssay(seurat_integrated) <- "RNA"
+
+# Normalize RNA data for visualization purposes
+seurat_integrated <- NormalizeData(seurat_integrated, verbose = FALSE)
+
+# Markers
+marker_genes <- c('Icos', 'Trdc', 'Trbc', 'Csf1r', 'Mrc1', 'Fcgr1a', 'H2-Ab1',
+                  'Itgax', 'Cd207', 'Kit', 'Cd14', 'S100a9', 'Cx3cr1', 'Maf')
+
+png(paste0(wd, '/output/images/Feature_plots/new_genes_1_all_samples.png'), width = 4500,
+    height = 2000, res=400)
+print(FeaturePlot(seurat_integrated, features = marker_genes))
+dev.off()
+
+# Select assay back to integrated
+DefaultAssay(seurat_integrated) <- "integrated"
+Idents(object = seurat_integrated) <- "integrated_snn_res.0.6"
+
+
+
+write.csv(seurat_integrated.markers, paste0(wd, 'output/all_markers_0.6_all_samples.csv'))
+
+stats <- seurat_integrated %>% dplyr::select(integrated_snn_res.0.6, condition) %>% 
+  dplyr::group_by(integrated_snn_res.0.6,condition) %>% dplyr::summarise(n())
+
+colnames(stats)[3] <- 'count'
+
+write.csv(stats, paste0(wd, 'output/cluster_0.6_condition_stats_all_samples.csv'))
+saveRDS(seurat_integrated, paste0(wd,'/RDS/seurat_integrated_all_samples_clustered.Rds'))
+
 
