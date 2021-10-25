@@ -224,8 +224,10 @@ for(n in imp_clusters){
       write.csv(res,
                 paste0(wd,'output/pseudo_bulk_analysis/diff_files/',n,'_',comparisons[[1]],
                        '_',comparisons[[2]],'.csv'))
+      dir.create(paste0('./output/pseudo_bulk_analysis/plots/volcano'), showWarnings = F,
+                 recursive = T)
       volcano_generate(res, titlename = paste0(n,' ',paste0(comparisons[[1]], '_', comparisons[[2]])), 
-                       file_loc = paste0(wd,'/output/pseudo_bulk_analysis/plots/volcano/',
+                       file_loc = paste0(wd,'output/pseudo_bulk_analysis/plots/volcano/',
                                          n,'_',paste0(comparisons[[1]], '_', comparisons[[2]])))
       # Transform counts for data visualization
       rld <- rlog(dds, blind=TRUE)
@@ -238,7 +240,7 @@ for(n in imp_clusters){
       # Plot heatmap
       dir.create('./output/pseudo_bulk_analysis/plots/heatmaps/', showWarnings = F)
       png(paste0('./output/pseudo_bulk_analysis/plots/heatmaps/',
-                 'cluster_',n, '_', comparisons[[1]], '_', comparisons[[2]],
+                 n, '_', comparisons[[1]], '_', comparisons[[2]],
                  '_corr.png'),
           width = 1000, height = 1000, res=200)
       print(pheatmap(rld_cor, annotation = anno[, c(condition_name), 
@@ -292,7 +294,7 @@ for(n in imp_clusters){
         # Write significant results to file
         dir.create('./output/pseudo_bulk_analysis/sig_diff_files',showWarnings = F)
         write.csv(sig_res,
-                  paste0('./output/pseudo_bulk_analysis/diff_files/cluster',n, "_",
+                  paste0('./output/pseudo_bulk_analysis/sig_diff_files/cluster',n, "_",
                          comparisons[[1]], '_', comparisons[[2]],'_sig_genes.csv'),
                   quote = FALSE, 
                   row.names = FALSE)
@@ -336,7 +338,7 @@ for(n in imp_clusters){
         dir.create('./output/pseudo_bulk_analysis/plots/scatter_plot/',
                    showWarnings = F)
         png(paste0('./output/pseudo_bulk_analysis/plots/scatter_plot/',
-                   'cluster_',n,'top20_sig_de_',  comparisons[[1]], '_',
+                   n,'top20_sig_de_',  comparisons[[1]], '_',
                    comparisons[[2]], '.png'),
             width = 1000, height = 1000, res=200)
         
@@ -364,7 +366,7 @@ for(n in imp_clusters){
         
         # Run pheatmap using the metadata data frame for the annotation
         png(paste0('./output/pseudo_bulk_analysis/plots/heatmaps/',
-                   'cluster_',n,'heatmaps_', comparisons[[1]], '_',
+                   n,'heatmaps_', comparisons[[1]], '_',
                    comparisons[[2]],'.png'),
             width = 1000, height = 1000, res=200)
         print(pheatmap(sig_norm[ , 2:length(colnames(sig_norm))], 
