@@ -20,7 +20,6 @@ library(png)
 library(DESeq2)
 library(RColorBrewer)
 ## Functions script
-
 plot_density <- function(wd, all_data, fname, feature, intercept){
   
   png(filename = paste0(wd, 'output/images/', 'QC/',fname, '_',feature,'_density.png'), 
@@ -63,4 +62,34 @@ plot_ncells <- function(wd, fname, obj){
                         fill= orig.ident)) + geom_bar() + xlab('') +
           geom_text(stat='count', aes(label=..count..), vjust=-1))
   dev.off()
+}
+
+volcano_generate <-function(res, titlename, file_loc){
+  keyvals <- ifelse(
+    res$log2FoldChange < 0 & res$padj < 0.05, 'blue3',
+    ifelse(res$log2FoldChange > 0 & res$padj < 0.05, 'red3',
+           'black'))
+  keyvals[is.na(keyvals)] <- 'black'
+  names(keyvals)[keyvals == 'red3'] <- 'Upregulated'
+  names(keyvals)[keyvals == 'black'] <- 'NS'
+  names(keyvals)[keyvals == 'blue3'] <- 'Downregulated'
+  pngname <- paste(file_loc,".png",sep="")
+  
+  
+  png(pngname, width=2000,height=1500, res=150)
+  
+  print(EnhancedVolcano(res,
+                        lab = rownames(res),
+                        x = 'log2FoldChange',
+                        y = 'pvalue',
+                        FCcutoff = FALSE,
+                        colCustom = keyvals,
+                        colAlpha = 1,
+                        #legendPosition = 'right',
+                        title = titlename,
+                        pointSize = 3.0,
+                        labSize = 6.0,
+                        
+                        xlim = c(-8, 8)))
+  dev.off() 
 }
